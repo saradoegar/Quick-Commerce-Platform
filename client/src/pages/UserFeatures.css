@@ -1,0 +1,354 @@
+.feature-shell {
+  min-height: 100vh;
+  background: var(--home-bg);
+  padding: 28px 0 56px;
+}
+
+.feature-nav,
+.feature-hero,
+.feature-section {
+  width: min(1120px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.feature-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 0 22px;
+}
+
+.feature-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feature-nav-links a {
+  border: 1px solid var(--home-border);
+  border-radius: 999px;
+  background: var(--home-card);
+  color: var(--home-muted);
+  padding: 9px 14px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.feature-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px;
+  padding: 32px;
+  border: 1px solid rgba(79, 143, 95, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--home-card), #eef6ec);
+  box-shadow: var(--home-shadow);
+}
+
+.feature-hero h1,
+.empty-state h1 {
+  margin: 0;
+  color: var(--home-text);
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.feature-hero p,
+.empty-state p {
+  max-width: 650px;
+  margin: 12px 0 0;
+  color: var(--home-muted);
+  line-height: 1.7;
+}
+
+.feature-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border-radius: 999px;
+  background: #fff2df;
+  color: #9a5a18;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.feature-section {
+  padding-top: 30px;
+}
+
+.address-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.address-grid,
+.wishlist-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.address-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wishlist-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.address-card,
+.address-form,
+.wishlist-card,
+.empty-state {
+  border: 1px solid var(--home-border);
+  border-radius: 16px;
+  background: var(--home-card);
+  box-shadow: 0 12px 30px rgba(47, 54, 64, 0.05);
+}
+
+.address-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.address-card-header,
+.address-actions,
+.wishlist-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.address-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--home-green-soft);
+  color: var(--home-green-dark);
+  padding: 7px 11px;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.default-pill {
+  border-radius: 999px;
+  background: #fff2df;
+  color: #9a5a18;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.address-card h2,
+.address-form h2 {
+  margin: 0;
+  color: var(--home-text);
+  font-size: 1.05rem;
+}
+
+.address-card p {
+  margin: 0;
+  color: var(--home-muted);
+  line-height: 1.6;
+}
+
+.address-actions button,
+.wishlist-actions button,
+.feature-button {
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 900;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.address-actions button,
+.wishlist-actions button {
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.soft-button {
+  background: var(--home-green-soft);
+  color: var(--home-green-dark);
+}
+
+.light-button {
+  background: #f7ead9;
+  color: #9a5a18;
+}
+
+.danger-button {
+  background: #fbe4df;
+  color: #a13c2f;
+}
+
+.feature-button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  background: var(--home-green);
+  color: #fff;
+}
+
+.feature-button:hover,
+.address-actions button:hover,
+.wishlist-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.address-form {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-field {
+  display: grid;
+  gap: 7px;
+}
+
+.form-field.full {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  color: var(--home-text);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--home-border);
+  border-radius: 14px;
+  background: #fffdf9;
+  color: var(--home-text);
+  padding: 0 12px;
+  font: inherit;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--home-muted);
+  font-weight: 800;
+}
+
+.wishlist-card {
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.wishlist-card .product-card {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.wishlist-actions {
+  padding: 0 16px 16px;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  max-width: 760px;
+  margin: 44px auto 0;
+  padding: 44px;
+  text-align: center;
+}
+
+.empty-icon {
+  display: grid;
+  width: 78px;
+  height: 78px;
+  margin-bottom: 20px;
+  place-items: center;
+  border-radius: 24px;
+  background: var(--home-green-soft);
+  color: var(--home-green);
+  font-size: 2.1rem;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 920px) {
+  .feature-hero,
+  .address-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .address-form {
+    position: static;
+  }
+
+  .wishlist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .feature-nav,
+  .feature-hero,
+  .feature-section {
+    width: min(100% - 28px, 1120px);
+  }
+
+  .feature-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .feature-hero,
+  .empty-state {
+    padding: 26px;
+  }
+
+  .address-grid,
+  .wishlist-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .address-actions,
+  .wishlist-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
