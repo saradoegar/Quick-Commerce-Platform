@@ -1,37 +1,25 @@
 import { useState } from 'react'
 import { FiHeart, FiShoppingBag, FiTrash2 } from 'react-icons/fi'
 import ProductCard from '../components/ProductCard'
-import { wishlistProducts } from '../data/userFeatures'
+import FeatureNav from '../components/FeatureNav'
+import { useWishlist } from '../context/WishlistContext'
+import useCart from '../hooks/useCart'
 import './Home.css'
 import './UserFeatures.css'
 
-function FeatureNav() {
-  return (
-    <header className="feature-nav">
-      <a className="brand" href="/">
-        <span className="brand-mark">QC</span>
-        QuickCart
-      </a>
-      <nav className="feature-nav-links" aria-label="Wishlist navigation">
-        <a href="/products">Products</a>
-        <a href="/addresses">Addresses</a>
-        <a href="/cart">Cart</a>
-      </nav>
-    </header>
-  )
-}
-
 function Wishlist() {
-  const [items, setItems] = useState(wishlistProducts)
+  const { wishlist: items, removeFromWishlist } = useWishlist()
+  const { addToCart } = useCart()
   const [movedItem, setMovedItem] = useState('')
 
   function removeProduct(productId) {
-    setItems((current) => current.filter((product) => product.id !== productId))
+    removeFromWishlist(productId)
   }
 
   function moveToCart(product) {
+    addToCart(product)
     setMovedItem(product.name)
-    removeProduct(product.id)
+    removeFromWishlist(product.id)
   }
 
   return (

@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@theme {
+  --color-emerald-50: #f0f7f1;
+  --color-emerald-100: #e6f1e7;
+  --color-emerald-500: #4f8f5f;
+  --color-emerald-600: #356b46;
+  --color-emerald-700: #2c593a;
+  --color-emerald-800: #21432c;
+}
+
 body {
   margin: 0;
 }

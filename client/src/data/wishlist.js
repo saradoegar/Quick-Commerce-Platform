@@ -1,42 +1,3 @@
-export const savedAddresses = [
-  {
-    id: 'addr-home',
-    label: 'Home',
-    name: 'Prince Sharma',
-    phone: '+91 98765 43210',
-    line1: 'House 24, Green Valley Apartments',
-    line2: 'Near City Center',
-    city: 'Jalandhar',
-    state: 'Punjab',
-    pincode: '144001',
-    isDefault: true,
-  },
-  {
-    id: 'addr-office',
-    label: 'Office',
-    name: 'Prince Sharma',
-    phone: '+91 98765 43210',
-    line1: 'Tech Park, Block B',
-    line2: 'Model Town Road',
-    city: 'Jalandhar',
-    state: 'Punjab',
-    pincode: '144003',
-    isDefault: false,
-  },
-  {
-    id: 'addr-hostel',
-    label: 'Hostel',
-    name: 'Prince Sharma',
-    phone: '+91 98765 43210',
-    line1: 'LPU Boys Hostel',
-    line2: 'Phagwara Campus',
-    city: 'Phagwara',
-    state: 'Punjab',
-    pincode: '144411',
-    isDefault: false,
-  },
-]
-
 export const wishlistProducts = [
   {
     id: 'wish-milk',
@@ -77,4 +38,4 @@ export const wishlistProducts = [
     image:
       'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=360&q=80',
   },
-]
+];

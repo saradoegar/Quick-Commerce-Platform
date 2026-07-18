@@ -1,156 +1,30 @@
+import { Link } from 'react-router-dom'
 import {
   FiArrowRight,
   FiClock,
   FiHome,
   FiMapPin,
-  FiMenu,
   FiPackage,
-  FiSearch,
-  FiShoppingBag,
   FiTruck,
   FiUser,
 } from 'react-icons/fi'
 import ProductCard from '../components/ProductCard'
+import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 import './Home.css'
 
-const categories = [
-  {
-    name: 'Fruits & Veggies',
-    detail: 'Fresh picks for daily meals',
-    accent: '#E8F1D9',
-    image:
-      'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Dairy & Breakfast',
-    detail: 'Milk, curd, eggs, and breads',
-    accent: '#F3E9DC',
-    image:
-      'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Snacks & Drinks',
-    detail: 'Tea-time bites and beverages',
-    accent: '#F9E4C8',
-    image:
-      'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Home Essentials',
-    detail: 'Cleaning, personal care, and more',
-    accent: '#E6F1E7',
-    image:
-      'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=360&q=80',
-  },
-]
+import { homeCategories, homeProducts, roles, benefits } from '../data/homeData'
 
-const products = [
-  {
-    name: 'Amul Taaza Milk',
-    meta: '500 ml',
-    price: 'Rs 28',
-    express: true,
-    image:
-      'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Banana Robusta',
-    meta: '6 pieces',
-    price: 'Rs 48',
-    express: true,
-    image:
-      'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Aashirvaad Atta',
-    meta: '5 kg pack',
-    price: 'Rs 245',
-    express: false,
-    image:
-      'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=360&q=80',
-  },
-  {
-    name: 'Surf Excel Liquid',
-    meta: '1 litre',
-    price: 'Rs 199',
-    express: true,
-    image:
-      'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=360&q=80',
-  },
-]
+const roleIconMap = {
+  user: <FiUser />,
+  home: <FiHome />,
+  truck: <FiTruck />,
+}
 
-const roles = [
-  {
-    icon: <FiUser />,
-    title: 'Customer',
-    text: 'Search products, place orders, track delivery, manage addresses.',
-    href: '/login',
-  },
-  {
-    icon: <FiHome />,
-    title: 'Warehouse Manager',
-    text: 'Review inventory, process orders, pack items, update stock.',
-    href: '/login',
-  },
-  {
-    icon: <FiTruck />,
-    title: 'Delivery Partner',
-    text: 'Accept delivery requests, update status, view assigned orders.',
-    href: '/login',
-  },
-]
-
-const benefits = [
-  {
-    icon: <FiClock />,
-    title: 'Minimum-time delivery',
-    text: 'Fast-moving essentials are routed from the nearest active warehouse.',
-  },
-  {
-    icon: <FiPackage />,
-    title: 'Wide daily catalog',
-    text: 'Groceries, snacks, personal care, household supplies, and more in one place.',
-  },
-  {
-    icon: <FiTruck />,
-    title: 'Order visibility',
-    text: 'Customers and teams can follow order progress from packing to delivery.',
-  },
-]
-
-function Navbar() {
-  return (
-    <header className="home-nav">
-      <a className="brand" href="/">
-        <span className="brand-mark">QC</span>
-        QuickCart
-      </a>
-
-      <nav className="nav-links" aria-label="Primary navigation">
-        <a href="/">Home</a>
-        <a href="/products">Products</a>
-        <a href="/categories">Categories</a>
-        <a href="#roles">Roles</a>
-        <a href="/orders">Orders</a>
-      </nav>
-
-      <div className="nav-actions">
-        <button className="icon-button" type="button" aria-label="Search">
-          <FiSearch />
-        </button>
-        <a className="cart-button" href="/cart">
-          <FiShoppingBag />
-          Cart
-        </a>
-        <a className="login-button" href="/login">
-          Login
-        </a>
-        <button className="menu-button" type="button" aria-label="Open menu">
-          <FiMenu />
-        </button>
-      </div>
-    </header>
-  )
+const benefitIconMap = {
+  clock: <FiClock />,
+  package: <FiPackage />,
+  truck: <FiTruck />,
 }
 
 function SectionHeader({ eyebrow, title, action }) {
@@ -161,10 +35,10 @@ function SectionHeader({ eyebrow, title, action }) {
         <h2>{title}</h2>
       </div>
       {action ? (
-        <a className="section-action" href={action.href}>
+        <Link className="section-action" to={action.href}>
           {action.label}
           <FiArrowRight />
-        </a>
+        </Link>
       ) : null}
     </div>
   )
@@ -172,7 +46,7 @@ function SectionHeader({ eyebrow, title, action }) {
 
 function CategoryCard({ category }) {
   return (
-    <a className="category-card" href="/categories">
+    <Link className="category-card" to="/categories">
       <div className="category-image" style={{ backgroundColor: category.accent }}>
         <img src={category.image} alt="" loading="lazy" />
       </div>
@@ -180,7 +54,7 @@ function CategoryCard({ category }) {
         <h3>{category.name}</h3>
         <p>{category.detail}</p>
       </div>
-    </a>
+    </Link>
   )
 }
 
@@ -195,10 +69,10 @@ function PromoBanner() {
           baskets when you are restocking for the week.
         </p>
       </div>
-      <a href="/products">
+      <Link to="/products">
         Explore essentials
         <FiArrowRight />
-      </a>
+      </Link>
     </section>
   )
 }
@@ -213,15 +87,15 @@ function RoleAccess() {
       />
       <div className="role-grid">
         {roles.map((role) => (
-          <a className="role-card" href={role.href} key={role.title}>
-            <span>{role.icon}</span>
+          <Link className="role-card" to={role.href} key={role.title}>
+            <span>{roleIconMap[role.icon]}</span>
             <h3>{role.title}</h3>
             <p>{role.text}</p>
             <strong>
               Continue as {role.title}
               <FiArrowRight />
             </strong>
-          </a>
+          </Link>
         ))}
       </div>
     </section>
@@ -235,7 +109,7 @@ function WhyChooseUs() {
       <div className="benefit-grid">
         {benefits.map((benefit) => (
           <article className="benefit-card" key={benefit.title}>
-            <span>{benefit.icon}</span>
+            <span>{benefitIconMap[benefit.icon]}</span>
             <h3>{benefit.title}</h3>
             <p>{benefit.text}</p>
           </article>
@@ -245,24 +119,6 @@ function WhyChooseUs() {
   )
 }
 
-function Footer() {
-  return (
-    <footer className="home-footer">
-      <div>
-        <a className="brand" href="/">
-          <span className="brand-mark">QC</span>
-          QuickCart
-        </a>
-        <p>Daily essentials, packed well and delivered with care.</p>
-      </div>
-      <nav aria-label="Footer navigation">
-        <a href="/products">Products</a>
-        <a href="/categories">Categories</a>
-        <a href="/login">Login</a>
-      </nav>
-    </footer>
-  )
-}
 
 function Home() {
   return (
@@ -311,7 +167,7 @@ function Home() {
             action={{ label: 'View all', href: '/categories' }}
           />
           <div className="category-grid">
-            {categories.map((category) => (
+            {homeCategories.map((category) => (
               <CategoryCard category={category} key={category.name} />
             ))}
           </div>
@@ -324,7 +180,7 @@ function Home() {
             action={{ label: 'Shop products', href: '/products' }}
           />
           <div className="product-grid">
-            {products.map((product) => (
+            {homeProducts.map((product) => (
               <ProductCard product={product} key={product.name} />
             ))}
           </div>

@@ -5,9 +5,8 @@ import toast from 'react-hot-toast'
 import CommerceHeader from '../components/CommerceHeader'
 import { defaultProduct, getProductById, products } from '../data/products'
 import useCart from '../hooks/useCart'
+import formatPrice from '../utils/formatPrice'
 import './commerce.css'
-
-const formatPrice = (price) => `Rs ${price}`
 
 function ProductDetails() {
   const { productId } = useParams()

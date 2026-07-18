@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { FiEdit2, FiHome, FiMapPin, FiPlus, FiTrash2 } from 'react-icons/fi'
-import { savedAddresses } from '../data/userFeatures'
+import FeatureNav from '../components/FeatureNav'
+import { savedAddresses } from '../data/addresses'
 import './Home.css'
 import './UserFeatures.css'
 
@@ -14,22 +15,6 @@ const emptyAddress = {
   state: '',
   pincode: '',
   isDefault: false,
-}
-
-function FeatureNav() {
-  return (
-    <header className="feature-nav">
-      <a className="brand" href="/">
-        <span className="brand-mark">QC</span>
-        QuickCart
-      </a>
-      <nav className="feature-nav-links" aria-label="User feature navigation">
-        <a href="/products">Products</a>
-        <a href="/wishlist">Wishlist</a>
-        <a href="/cart">Cart</a>
-      </nav>
-    </header>
-  )
 }
 
 function AddressCard({ address, onDelete, onEdit, onSetDefault }) {

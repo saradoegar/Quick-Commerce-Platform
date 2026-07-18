@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { defaultProduct, getProductById } from '../data/products'
 import CartContext from './cartState'
 
@@ -7,8 +7,15 @@ const FREE_DELIVERY_AT = 199
 const TAX_RATE = 0.05
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState([{ productId: defaultProduct.id, quantity: 1 }])
+  const [items, setItems] = useState(() => {
+    const saved = localStorage.getItem('quickcart_items')
+    return saved ? JSON.parse(saved) : [{ productId: defaultProduct.id, quantity: 1 }]
+  })
   const [coupon, setCoupon] = useState('')
+
+  useEffect(() => {
+    localStorage.setItem('quickcart_items', JSON.stringify(items))
+  }, [items])
 
   const cartItems = items
     .map((item) => ({ ...item, product: getProductById(item.productId) }))
