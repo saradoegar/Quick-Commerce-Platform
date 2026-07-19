@@ -37,8 +37,9 @@ function ProductDetails() {
           const categoryName = p.category?.name || p.category
           if (categoryName) {
             const relRes = await api.products.getAll({ category: categoryName, limit: 4 })
-            if (relRes.data && relRes.data.data && active) {
-              const filtered = relRes.data.data
+             if (relRes.data && relRes.data.data && active) {
+              const rawRelated = relRes.data.data.products || (Array.isArray(relRes.data.data) ? relRes.data.data : [])
+              const filtered = rawRelated
                 .map((item) => ({ ...item, id: item._id, images: item.images || [item.thumbnail] }))
                 .filter((item) => item.id !== p.id)
                 .slice(0, 3)

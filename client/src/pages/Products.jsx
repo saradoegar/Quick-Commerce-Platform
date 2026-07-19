@@ -227,9 +227,10 @@ function Products() {
 
         const res = await api.products.getAll(params)
 
-        if (active && res.data) {
+        if (active && res.data && res.data.data) {
+          const rawProducts = res.data.data.products || (Array.isArray(res.data.data) ? res.data.data : [])
           // Format products mapping _id to id so components aren't broken
-          const mapped = (res.data.data || []).map((p) => ({
+          const mapped = rawProducts.map((p) => ({
             ...p,
             id: p._id,
             rating: p.rating || 4.5,
@@ -240,7 +241,7 @@ function Products() {
             specifications: p.specifications || []
           }))
           setProductsList(mapped)
-          setTotalItems(res.data.total || mapped.length)
+          setTotalItems(res.data.data.pagination?.totalProducts || res.data.total || mapped.length)
         }
       } catch (err) {
         console.error('Error fetching catalog data:', err)

@@ -144,7 +144,8 @@ function Home() {
             setCategoriesList(mappedCats.slice(0, 4))
           }
           if (prodsRes.data && prodsRes.data.data) {
-            const mappedProds = prodsRes.data.data.map(p => ({
+            const rawProds = prodsRes.data.data.products || (Array.isArray(prodsRes.data.data) ? prodsRes.data.data : [])
+            const mappedProds = rawProds.map(p => ({
               ...p,
               id: p._id,
             }))
