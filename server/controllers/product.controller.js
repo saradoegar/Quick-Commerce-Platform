@@ -1,6 +1,8 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // @desc    Get all products with pagination, search, sorting & filtering
 // @route   GET /api/products
 // @access  Public
@@ -22,12 +24,18 @@ const getProducts = async (req, res, next) => {
 
     const query = { isActive: true };
 
-    // 1. Category Filter: supports either Category ID or Category Slug
+    // 1. Category Filter: supports Category ID, slug, or display name
     if (category) {
       if (category.match(/^[0-9a-fA-F]{24}$/)) {
         query.category = category;
       } else {
-        const cat = await Category.findOne({ slug: category });
+        const trimmedCategory = category.trim();
+        const cat = await Category.findOne({
+          $or: [
+            { slug: trimmedCategory },
+            { name: { $regex: new RegExp(`^${escapeRegex(trimmedCategory)}$`, 'i') } },
+          ],
+        });
         if (cat) {
           query.category = cat._id;
         } else {
