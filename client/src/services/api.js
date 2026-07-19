@@ -98,6 +98,18 @@ apiInstance.addresses = {
   }
 }
 
+
+apiInstance.payments = {
+  createOrder: async (orderData) => {
+    return apiInstance.post('/api/payments/create-order', orderData)
+  },
+  verify: async (paymentData) => {
+    return apiInstance.post('/api/payments/verify', paymentData)
+  },
+  getByOrderId: async (orderId) => {
+    return apiInstance.get(`/api/payments/${orderId}`)
+  }
+}
 apiInstance.orders = {
   getAll: async (params) => {
     return apiInstance.get('/api/orders', { params })
