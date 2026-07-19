@@ -8,10 +8,11 @@ import {
   FiList,
   FiStar,
 } from 'react-icons/fi'
+import api from '../services/api'
 import ProductCard from '../components/ProductCard'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { products as allProducts, filterGroups } from '../data/products'
+import { filterGroups as staticFilterGroups } from '../data/products'
 import './Home.css'
 import './Products.css'
 
@@ -83,13 +84,14 @@ function FilterGroup({ group, checkedOptions, onChange }) {
 }
 
 function Products() {
+  const [categoriesList, setCategoriesList] = useState([])
   const [selectedCategories, setSelectedCategories] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const catParam = params.get('category')
     if (catParam) {
       const slugMap = {
-        'fruits-vegetables': 'Fruits & Veggies',
-        'fruits-veggies': 'Fruits & Veggies',
+        'fruits-vegetables': 'Organic Fruits & Veggies',
+        'fruits-veggies': 'Organic Fruits & Veggies',
         'dairy-eggs': 'Dairy & Breakfast',
         'dairy-breakfast': 'Dairy & Breakfast',
         'snacks-drinks': 'Snacks & Drinks',
@@ -114,98 +116,132 @@ function Products() {
   const [viewMode, setViewMode] = useState('grid')
   const [currentPage, setCurrentPage] = useState(1)
 
-  // API loading simulation state
+  // API state
   const [productsList, setProductsList] = useState([])
   const [totalItems, setTotalItems] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Single effect handler simulation for API integrations
+  // Load categories list on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.categories.getAll()
+        if (res.data && res.data.data) {
+          setCategoriesList(res.data.data)
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err)
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  const filterGroups = useMemo(() => {
+    const catOptions = categoriesList.length > 0
+      ? categoriesList.map((c) => c.name)
+      : ['Organic Fruits & Veggies', 'Dairy & Breakfast', 'Snacks & Drinks', 'Home Essentials']
+    
+    return [
+      {
+        title: 'Categories',
+        options: catOptions,
+      },
+      ...staticFilterGroups.slice(1)
+    ]
+  }, [categoriesList])
+
+  // Single effect handler fetching backend products
   useEffect(() => {
     let active = true
 
     const fetchProductsData = async () => {
       setIsLoading(true)
       try {
-        // Simulating REST API roundtrip delay
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        if (!active) return
+        const params = {
+          page: currentPage,
+          limit: 12
+        }
 
-        let result = [...allProducts]
-
-        // 1. Search Query filter
+        // 1. Search Query parameter
         if (searchQuery) {
-          const query = searchQuery.toLowerCase().trim()
-          result = result.filter(
-            (p) =>
-              p.name.toLowerCase().includes(query) ||
-              (p.brand && p.brand.toLowerCase().includes(query)) ||
-              p.category.toLowerCase().includes(query)
-          )
+          params.search = searchQuery
         }
 
-        // 2. Categories filter
+        // 2. Category mapping parameter
         if (selectedCategories.length > 0) {
-          result = result.filter((p) => selectedCategories.includes(p.category))
+          // If we have selected multiple, let's pass the first one to match backend single string category query
+          params.category = selectedCategories[0]
         }
 
-        // 3. Brands filter
+        // 3. Brand parameter
         if (selectedBrands.length > 0) {
-          result = result.filter((p) => selectedBrands.includes(p.brand))
+          params.brand = selectedBrands[0]
         }
 
-        // 4. Rating filter
+        // 4. Rating parameter
         if (selectedRatings.length > 0) {
-          result = result.filter((p) => {
-            const ratingNum = parseFloat(p.rating)
-            return selectedRatings.some((option) => {
-              if (option === '4 stars & above') return ratingNum >= 4.0
-              if (option === '3 stars & above') return ratingNum >= 3.0
-              return true
-            })
-          })
+          const ratingNum = selectedRatings.some(o => o.startsWith('4')) ? 4 : 3
+          params.rating = ratingNum
         }
 
-        // 5. Price Range filter
+        // 5. Price Ranges
         if (selectedPriceRanges.length > 0) {
-          result = result.filter((p) => {
-            const price = p.price
-            return selectedPriceRanges.some((option) => {
-              if (option === 'Under Rs 50') return price < 50
-              if (option === 'Rs 50 - Rs 150') return price >= 50 && price <= 150
-              if (option === 'Rs 150 - Rs 300') return price >= 150 && price <= 300
-              if (option === 'Above Rs 300') return price > 300
-              return true
-            })
-          })
-        }
-
-        // 6. Availability filter
-        if (selectedAvailability.length > 0) {
-          result = result.filter((p) => {
-            for (const option of selectedAvailability) {
-              if (option === 'Express delivery' && !p.express) return false
-              if (option === 'In stock' && p.stock.toLowerCase().includes('out of stock')) return false
-              if (option === 'Offers available' && !p.discount) return false
+          let minPrice = Infinity
+          let maxPrice = -Infinity
+          selectedPriceRanges.forEach((range) => {
+            if (range === 'Under Rs 50') {
+              minPrice = Math.min(minPrice, 0)
+              maxPrice = Math.max(maxPrice, 50)
+            } else if (range === 'Rs 50 - Rs 150') {
+              minPrice = Math.min(minPrice, 50)
+              maxPrice = Math.max(maxPrice, 150)
+            } else if (range === 'Rs 150 - Rs 300') {
+              minPrice = Math.min(minPrice, 150)
+              maxPrice = Math.max(maxPrice, 300)
+            } else if (range === 'Above Rs 300') {
+              minPrice = Math.min(minPrice, 300)
+              maxPrice = Math.max(maxPrice, 10000)
             }
-            return true
           })
+          if (minPrice !== Infinity) params.minPrice = minPrice
+          if (maxPrice !== -Infinity) params.maxPrice = maxPrice
         }
 
-        // Apply Sorting
+        // 6. Availability parameters
+        selectedAvailability.forEach((opt) => {
+          if (opt === 'Express delivery') params.express = true
+          if (opt === 'In stock') params.inStock = true
+          if (opt === 'Offers available') params.featured = true
+        })
+
+        // 7. Sort option
         if (sortBy === 'Price: Low to High') {
-          result.sort((a, b) => a.price - b.price)
+          params.sort = 'priceLowToHigh'
         } else if (sortBy === 'Price: High to Low') {
-          result.sort((a, b) => b.price - a.price)
+          params.sort = 'priceHighToLow'
         } else if (sortBy === 'Rating') {
-          result.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+          params.sort = 'rating'
+        } else {
+          params.sort = 'popularity'
         }
 
-        const total = result.length
-        const startIndex = (currentPage - 1) * 12
-        const paginated = result.slice(startIndex, startIndex + 12)
+        const res = await api.products.getAll(params)
 
-        setProductsList(paginated)
-        setTotalItems(total)
+        if (active && res.data) {
+          // Format products mapping _id to id so components aren't broken
+          const mapped = (res.data.data || []).map((p) => ({
+            ...p,
+            id: p._id,
+            rating: p.rating || 4.5,
+            reviewCount: p.reviewCount || 10,
+            stock: p.stock > 0 ? 'In stock' : 'Out of stock',
+            express: p.express !== false,
+            images: p.images || [p.thumbnail],
+            specifications: p.specifications || []
+          }))
+          setProductsList(mapped)
+          setTotalItems(res.data.total || mapped.length)
+        }
       } catch (err) {
         console.error('Error fetching catalog data:', err)
       } finally {
@@ -232,7 +268,7 @@ function Products() {
   ])
 
   const handleCheckboxChange = (filterTitle, option) => {
-    setCurrentPage(1) // Reset to page 1 on filter change
+    setCurrentPage(1)
     switch (filterTitle) {
       case 'Categories':
         setSelectedCategories((prev) =>
@@ -321,7 +357,7 @@ function Products() {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1) // Reset to page 1
+    setCurrentPage(1)
   }
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FiArrowRight,
@@ -16,8 +16,7 @@ import toast from 'react-hot-toast'
 import useCart from '../hooks/useCart'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { orders as initialOrders } from '../data/orders'
-import { getProductById } from '../data/products'
+import api from '../services/api'
 import './Home.css'
 
 // Reusable Breadcrumb Component
@@ -198,55 +197,91 @@ function EmptyOrders({ onReset }) {
   )
 }
 
-
-// Main My Orders Page component
 function Orders() {
-  // Load initial orders from local storage or fallback to mock orders
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem('quickcart_orders')
-    return saved ? JSON.parse(saved) : initialOrders
-  })
-
-  // State hooks for UI control
+  const [orders, setOrders] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [sortBy, setSortBy] = useState('newest')
-  const [trackingOpen, setTrackingOpen] = useState({}) // Stores mapping of orderId -> boolean (expanded)
+  const [trackingOpen, setTrackingOpen] = useState({})
 
   const { addToCart } = useCart()
 
-  // Save updates to local storage to simulate database persistence
-  const saveOrders = (updatedOrders) => {
-    setOrders(updatedOrders)
-    localStorage.setItem('quickcart_orders', JSON.stringify(updatedOrders))
-  }
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await api.orders.getAll()
+      if (res.data && res.data.data) {
+        const mapped = res.data.data.map((order) => {
+          const products = (order.items || []).map((item) => {
+            const p = item.product || {}
+            return {
+              productId: p._id,
+              quantity: item.quantity,
+              name: p.name || 'Product',
+              price: item.priceAtPurchase || p.price || 0,
+              image: p.thumbnail || p.images?.[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=360&q=80',
+              meta: p.meta || 'Pack'
+            }
+          })
 
-  // Interactive Actions
-  const handleCancelOrder = (orderId) => {
-    if (window.confirm(`Are you sure you want to cancel order ${orderId}?`)) {
-      const updated = orders.map((order) => {
-        if (order.id === orderId) {
+          let status = 'Processing'
+          if (order.orderStatus === 'Pending') status = 'Placed'
+          else if (order.orderStatus === 'Confirmed') status = 'Confirmed'
+          else if (order.orderStatus === 'Packed') status = 'Packed'
+          else if (order.orderStatus === 'Shipped') status = 'Shipped'
+          else if (order.orderStatus === 'OutForDelivery') status = 'Out For Delivery'
+          else if (order.orderStatus === 'Delivered') status = 'Delivered'
+          else if (order.orderStatus === 'Cancelled') status = 'Cancelled'
+
           return {
-            ...order,
-            status: 'Cancelled',
-            trackingStatus: 'Cancelled',
-            estimatedDelivery: 'Order Cancelled'
+            id: order._id,
+            date: order.createdAt,
+            estimatedDelivery: order.estimatedDeliveryTime || 'Delivery details pending',
+            status,
+            products,
+            paymentMethod: order.paymentMethod || 'COD',
+            paymentStatus: order.paymentStatus || 'Pending',
+            total: order.totalAmount || 0,
+            address: {
+              name: order.shippingAddress?.fullName || 'Customer',
+              line1: order.shippingAddress?.addressLine1 || '',
+              city: order.shippingAddress?.city || ''
+            }
           }
-        }
-        return order
-      })
-      saveOrders(updated)
-      toast.success(`Order ${orderId} has been successfully cancelled.`, {
-        icon: '⚠️'
-      })
+        })
+        setOrders(mapped)
+      }
+    } catch (err) {
+      console.error('Failed to fetch orders:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchOrders()
+    })
+  }, [fetchOrders])
+
+  const handleCancelOrder = async (orderId) => {
+    if (window.confirm(`Are you sure you want to cancel order ${orderId}?`)) {
+      try {
+        await api.orders.cancel(orderId, 'User cancelled order')
+        toast.success(`Order ${orderId} has been successfully cancelled.`, {
+          icon: '⚠️'
+        })
+        await fetchOrders()
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to cancel order')
+      }
     }
   }
 
   const handleReorder = (order) => {
     let addCount = 0
     order.products.forEach((item) => {
-      const prod = getProductById(item.productId)
-      if (prod) {
+      if (item.productId) {
         addToCart(item.productId, item.quantity)
         addCount += item.quantity
       }
@@ -274,29 +309,24 @@ function Orders() {
     setSortBy('newest')
   }
 
-  // Filter and Sort Processing
   const filteredAndSortedOrders = useMemo(() => {
     let result = [...orders]
 
-    // 1. Search Query filter (matches order ID or product names inside the order)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter((order) => {
         const matchesId = order.id.toLowerCase().includes(query)
-        const matchesProducts = order.products.some((item) => {
-          const product = getProductById(item.productId)
-          return product && product.name.toLowerCase().includes(query)
-        })
+        const matchesProducts = order.products.some((item) =>
+          item.name.toLowerCase().includes(query)
+        )
         return matchesId || matchesProducts
       })
     }
 
-    // 2. Status Filter
     if (statusFilter !== 'All') {
       result = result.filter((order) => order.status === statusFilter)
     }
 
-    // 3. Sorting
     if (sortBy === 'newest') {
       result.sort((a, b) => new Date(b.date) - new Date(a.date))
     } else if (sortBy === 'oldest') {
@@ -310,7 +340,6 @@ function Orders() {
     return result
   }, [orders, searchQuery, statusFilter, sortBy])
 
-  // Helper date formatter
   const formatDate = (isoString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' }
     return new Date(isoString).toLocaleDateString(undefined, options)
@@ -336,7 +365,6 @@ function Orders() {
 
         {/* Toolbar Filters & Search */}
         <section className="bg-white border border-[#2f3640]/10 rounded-2xl p-4 shadow-sm mb-6 flex flex-col lg:flex-row gap-4 items-center justify-between">
-          {/* Search Field */}
           <div className="relative w-full lg:w-96">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6b7280]">
               <FiSearch size={18} />
@@ -350,9 +378,7 @@ function Orders() {
             />
           </div>
 
-          {/* Action Row */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
-            {/* Status Select */}
             <div className="flex items-center gap-2">
               <label htmlFor="status-filter" className="text-xs font-extrabold text-[#2f3640] uppercase tracking-wider">Status:</label>
               <select
@@ -370,7 +396,6 @@ function Orders() {
               </select>
             </div>
 
-            {/* Sort Select */}
             <div className="flex items-center gap-2">
               <label htmlFor="sort-select" className="text-xs font-extrabold text-[#2f3640] uppercase tracking-wider">Sort:</label>
               <select
@@ -389,7 +414,11 @@ function Orders() {
         </section>
 
         {/* Orders Cards Grid */}
-        {filteredAndSortedOrders.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f8f5f]"></div>
+          </div>
+        ) : filteredAndSortedOrders.length > 0 ? (
           <div className="space-y-6">
             {filteredAndSortedOrders.map((order) => (
               <article key={order.id} className="bg-white border border-[#2f3640]/10 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -423,27 +452,23 @@ function Orders() {
                   <div className="lg:col-span-2 space-y-4">
                     <p className="text-xs font-extrabold text-[#6b7280] uppercase tracking-wider mb-2">Items</p>
                     <div className="divide-y divide-[#2f3640]/5 max-h-56 overflow-y-auto pr-2">
-                      {order.products.map((item) => {
-                        const product = getProductById(item.productId)
-                        if (!product) return null
-                        return (
-                          <div key={item.productId} className="flex gap-4 py-3 first:pt-0 last:pb-0 items-center">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-14 h-14 object-cover rounded-xl border border-[#2f3640]/5 bg-[#f9f6f1]"
-                              loading="lazy"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-[#2f3640] truncate">{product.name}</h4>
-                              <p className="text-xs text-[#6b7280] mt-0.5">{product.meta} × {item.quantity}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-sm font-bold text-[#2f3640]">Rs {product.price * item.quantity}</span>
-                            </div>
+                      {order.products.map((item) => (
+                        <div key={item.productId} className="flex gap-4 py-3 first:pt-0 last:pb-0 items-center">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-14 h-14 object-cover rounded-xl border border-[#2f3640]/5 bg-[#f9f6f1]"
+                            loading="lazy"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-[#2f3640] truncate">{item.name}</h4>
+                            <p className="text-xs text-[#6b7280] mt-0.5">{item.meta} × {item.quantity}</p>
                           </div>
-                        )
-                      })}
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-[#2f3640]">Rs {item.price * item.quantity}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -477,7 +502,6 @@ function Orders() {
                       </div>
                     </div>
 
-                    {/* Expand/Collapse tracking timeline */}
                     <div className="mt-5">
                       <button
                         onClick={() => toggleTracking(order.id)}
@@ -509,7 +533,6 @@ function Orders() {
                 {/* Bottom Action Footer Row */}
                 <div className="bg-[#fffdf9]/50 border-t border-[#2f3640]/5 px-4 sm:px-5 py-4 flex flex-wrap gap-2.5 justify-between items-center">
                   <div className="flex flex-wrap gap-2">
-                    {/* View Details Link */}
                     <Link
                       to={`/orders/${order.id}`}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#2f3640]/10 hover:bg-[#f9f6f1] text-[#2f3640] text-xs font-extrabold transition-all"
@@ -517,7 +540,6 @@ function Orders() {
                       <FiFileText /> View Details
                     </Link>
 
-                    {/* Download Invoice Button */}
                     <button
                       onClick={() => handleDownloadInvoice(order.id)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#2f3640]/10 hover:bg-[#f9f6f1] text-[#2f3640] text-xs font-extrabold transition-all"
@@ -528,8 +550,7 @@ function Orders() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {/* Cancel Order Action */}
-                    {(order.status === 'Processing' || order.status === 'Packed') && (
+                    {(order.status === 'Placed' || order.status === 'Confirmed' || order.status === 'Processing') && (
                       <button
                         onClick={() => handleCancelOrder(order.id)}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-extrabold transition-all border border-red-200/50"
@@ -539,7 +560,6 @@ function Orders() {
                       </button>
                     )}
 
-                    {/* Reorder Button */}
                     <button
                       onClick={() => handleReorder(order)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4f8f5f] hover:bg-[#356b46] text-white text-xs font-extrabold shadow-sm transition-all"

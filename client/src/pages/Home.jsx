@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FiArrowRight,
@@ -8,6 +9,7 @@ import {
   FiTruck,
   FiUser,
 } from 'react-icons/fi'
+import api from '../services/api'
 import ProductCard from '../components/ProductCard'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -47,12 +49,12 @@ function SectionHeader({ eyebrow, title, action }) {
 function CategoryCard({ category }) {
   return (
     <Link className="category-card" to="/categories">
-      <div className="category-image" style={{ backgroundColor: category.accent }}>
+      <div className="category-image" style={{ backgroundColor: category.accent || '#E8F1D9' }}>
         <img src={category.image} alt="" loading="lazy" />
       </div>
       <div>
         <h3>{category.name}</h3>
-        <p>{category.detail}</p>
+        <p>{category.detail || category.description}</p>
       </div>
     </Link>
   )
@@ -119,8 +121,47 @@ function WhyChooseUs() {
   )
 }
 
-
 function Home() {
+  const [categoriesList, setCategoriesList] = useState([])
+  const [productsList, setProductsList] = useState([])
+
+  useEffect(() => {
+    let active = true
+    const fetchHomeData = async () => {
+      try {
+        const [catsRes, prodsRes] = await Promise.all([
+          api.categories.getAll(),
+          api.products.getAll({ limit: 4 })
+        ])
+        if (active) {
+          if (catsRes.data && catsRes.data.data) {
+            const mappedCats = catsRes.data.data.map((cat, idx) => ({
+              ...cat,
+              id: cat._id,
+              detail: cat.description,
+              accent: idx % 2 === 0 ? '#E8F1D9' : '#F3E9DC'
+            }))
+            setCategoriesList(mappedCats.slice(0, 4))
+          }
+          if (prodsRes.data && prodsRes.data.data) {
+            const mappedProds = prodsRes.data.data.map(p => ({
+              ...p,
+              id: p._id,
+            }))
+            setProductsList(mappedProds)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch home data:', err)
+      }
+    }
+    fetchHomeData()
+    return () => { active = false }
+  }, [])
+
+  const displayCategories = categoriesList.length > 0 ? categoriesList : homeCategories
+  const displayProducts = productsList.length > 0 ? productsList : homeProducts
+
   return (
     <div className="home-page">
       <Navbar />
@@ -167,7 +208,7 @@ function Home() {
             action={{ label: 'View all', href: '/categories' }}
           />
           <div className="category-grid">
-            {homeCategories.map((category) => (
+            {displayCategories.map((category) => (
               <CategoryCard category={category} key={category.name} />
             ))}
           </div>
@@ -180,8 +221,8 @@ function Home() {
             action={{ label: 'Shop products', href: '/products' }}
           />
           <div className="product-grid">
-            {homeProducts.map((product) => (
-              <ProductCard product={product} key={product.name} />
+            {displayProducts.map((product) => (
+              <ProductCard product={product} key={product.id || product.name} />
             ))}
           </div>
         </section>

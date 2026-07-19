@@ -1,63 +1,106 @@
-import { useMemo, useState, useEffect } from 'react'
-import { defaultProduct, getProductById } from '../data/products'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import api from '../services/api'
 import CartContext from './cartState'
-
-const DELIVERY_CHARGE = 25
-const FREE_DELIVERY_AT = 199
-const TAX_RATE = 0.05
+import { useAuth } from './AuthContext'
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem('quickcart_items')
-    return saved ? JSON.parse(saved) : [{ productId: defaultProduct.id, quantity: 1 }]
-  })
+  const { user } = useAuth()
+  const [items, setItems] = useState([])
+  const [subtotal, setSubtotal] = useState(0)
+  const [discount, setDiscount] = useState(0)
+  const [deliveryCharge, setDeliveryCharge] = useState(0)
+  const [tax, setTax] = useState(0)
+  const [total, setTotal] = useState(0)
   const [coupon, setCoupon] = useState('')
 
-  useEffect(() => {
-    localStorage.setItem('quickcart_items', JSON.stringify(items))
-  }, [items])
-
-  const cartItems = items
-    .map((item) => ({ ...item, product: getProductById(item.productId) }))
-    .filter((item) => item.product)
-
-  const addToCart = (productId, quantity = 1) => {
-    setItems((currentItems) => {
-      const currentItem = currentItems.find((item) => item.productId === productId)
-      if (currentItem) {
-        return currentItems.map((item) =>
-          item.productId === productId ? { ...item, quantity: item.quantity + quantity } : item,
-        )
+  const fetchCart = useCallback(async () => {
+    const token = localStorage.getItem('quickcart_token')
+    if (!token) {
+      setItems([])
+      setSubtotal(0)
+      setDiscount(0)
+      setDeliveryCharge(0)
+      setTax(0)
+      setTotal(0)
+      return
+    }
+    try {
+      const res = await api.cart.get()
+      if (res.data && res.data.data) {
+        const cart = res.data.data
+        const formattedItems = (cart.items || []).map((item) => {
+          if (item.product) {
+            item.product.id = item.product._id
+          }
+          return {
+            ...item,
+            productId: item.product?._id,
+          }
+        })
+        setItems(formattedItems)
+        setSubtotal(cart.subtotal || 0)
+        setDiscount(cart.discount || 0)
+        setDeliveryCharge(cart.deliveryCharge || 0)
+        setTax(cart.tax || 0)
+        setTotal(cart.total || 0)
       }
-      return [...currentItems, { productId, quantity }]
+    } catch (err) {
+      console.error('Failed to fetch cart:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchCart()
     })
-  }
+  }, [user, fetchCart])
 
-  const updateQuantity = (productId, quantity) => {
-    setItems((currentItems) =>
-      quantity < 1
-        ? currentItems.filter((item) => item.productId !== productId)
-        : currentItems.map((item) => (item.productId === productId ? { ...item, quantity } : item)),
-    )
-  }
+  const addToCart = useCallback(async (productId, quantity = 1) => {
+    try {
+      await api.cart.add(productId, quantity)
+      await fetchCart()
+    } catch (err) {
+      console.error('Failed to add to cart:', err)
+    }
+  }, [fetchCart])
 
-  const removeFromCart = (productId) => {
-    setItems((currentItems) => currentItems.filter((item) => item.productId !== productId))
-  }
+  const updateQuantity = useCallback(async (productId, quantity) => {
+    try {
+      if (quantity < 1) {
+        await api.cart.remove(productId)
+      } else {
+        await api.cart.updateQuantity(productId, quantity)
+      }
+      await fetchCart()
+    } catch (err) {
+      console.error('Failed to update quantity:', err)
+    }
+  }, [fetchCart])
 
-  const clearCart = () => setItems([])
-  const subtotal = cartItems.reduce((total, item) => total + item.product.price * item.quantity, 0)
-  const discount = coupon.toUpperCase() === 'QUICK10' ? Math.min(10, subtotal) : 0
-  const deliveryCharge = subtotal === 0 || subtotal >= FREE_DELIVERY_AT ? 0 : DELIVERY_CHARGE
-  const tax = Math.round((subtotal - discount) * TAX_RATE)
-  const total = subtotal - discount + deliveryCharge + tax
+  const removeFromCart = useCallback(async (productId) => {
+    try {
+      await api.cart.remove(productId)
+      await fetchCart()
+    } catch (err) {
+      console.error('Failed to remove item:', err)
+    }
+  }, [fetchCart])
+
+  const clearCart = useCallback(async () => {
+    try {
+      await api.cart.clear()
+      await fetchCart()
+    } catch (err) {
+      console.error('Failed to clear cart:', err)
+    }
+  }, [fetchCart])
 
   const value = useMemo(
     () => ({
-      items: cartItems, addToCart, updateQuantity, removeFromCart, clearCart, coupon, setCoupon,
-      subtotal, discount, deliveryCharge, tax, total,
+      items, addToCart, updateQuantity, removeFromCart, clearCart, coupon, setCoupon,
+      subtotal, discount, deliveryCharge, tax, total, refreshCart: fetchCart,
     }),
-    [cartItems, coupon, subtotal, discount, deliveryCharge, tax, total],
+    [items, addToCart, updateQuantity, removeFromCart, clearCart, coupon, subtotal, discount, deliveryCharge, tax, total, fetchCart],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

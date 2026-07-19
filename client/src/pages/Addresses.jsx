@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { FiEdit2, FiHome, FiMapPin, FiPlus, FiTrash2 } from 'react-icons/fi'
 import FeatureNav from '../components/FeatureNav'
-import { savedAddresses } from '../data/addresses'
+import api from '../services/api'
 import './Home.css'
 import './UserFeatures.css'
 
@@ -16,6 +16,31 @@ const emptyAddress = {
   pincode: '',
   isDefault: false,
 }
+
+const mapAddressToUI = (addr) => ({
+  id: addr._id,
+  label: addr.addressType || 'Home',
+  name: addr.fullName,
+  phone: addr.phone,
+  line1: addr.addressLine1,
+  line2: addr.addressLine2 || '',
+  city: addr.city,
+  state: addr.state,
+  pincode: addr.postalCode,
+  isDefault: addr.isDefault || false,
+})
+
+const mapAddressToBackend = (uiAddr) => ({
+  fullName: uiAddr.name,
+  phone: uiAddr.phone,
+  addressLine1: uiAddr.line1,
+  addressLine2: uiAddr.line2,
+  city: uiAddr.city,
+  state: uiAddr.state,
+  postalCode: uiAddr.pincode,
+  addressType: uiAddr.label,
+  isDefault: uiAddr.isDefault,
+})
 
 function AddressCard({ address, onDelete, onEdit, onSetDefault }) {
   return (
@@ -32,16 +57,18 @@ function AddressCard({ address, onDelete, onEdit, onSetDefault }) {
         <p>{address.phone}</p>
       </div>
       <p>
-        {address.line1}, {address.line2}, {address.city}, {address.state} -{' '}
+        {address.line1}, {address.line2 ? `${address.line2}, ` : ''}{address.city}, {address.state} -{' '}
         {address.pincode}
       </p>
       <div className="address-actions">
         <button className="soft-button" type="button" onClick={() => onEdit(address)}>
           <FiEdit2 /> Edit
         </button>
-        <button className="light-button" type="button" onClick={() => onSetDefault(address.id)}>
-          Set Default
-        </button>
+        {!address.isDefault && (
+          <button className="light-button" type="button" onClick={() => onSetDefault(address.id)}>
+            Set Default
+          </button>
+        )}
         <button className="danger-button" type="button" onClick={() => onDelete(address.id)}>
           <FiTrash2 /> Delete
         </button>
@@ -111,7 +138,7 @@ function AddressForm({ editingAddress, onCancel, onSubmit }) {
         </div>
         <div className="form-field full">
           <label htmlFor="line2">Address line 2</label>
-          <input id="line2" name="line2" value={form.line2} onChange={updateField} required />
+          <input id="line2" name="line2" value={form.line2} onChange={updateField} />
         </div>
         <div className="form-field">
           <label htmlFor="city">City</label>
@@ -140,40 +167,60 @@ function AddressForm({ editingAddress, onCancel, onSubmit }) {
 }
 
 function Addresses() {
-  const [addresses, setAddresses] = useState(savedAddresses)
+  const [addresses, setAddresses] = useState([])
   const [editingAddress, setEditingAddress] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  function saveAddress(address) {
-    setAddresses((current) => {
-      const nextAddress = {
-        ...address,
-        id: address.id ?? `addr-${Date.now()}`,
+  const fetchAddresses = useCallback(async () => {
+    try {
+      const res = await api.addresses.getAll()
+      if (res.data && res.data.data) {
+        const mapped = res.data.data.map(mapAddressToUI)
+        setAddresses(mapped)
       }
-      const nextAddresses = address.id
-        ? current.map((item) => (item.id === address.id ? nextAddress : item))
-        : [nextAddress, ...current]
+    } catch (err) {
+      console.error('Failed to load addresses:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-      if (!nextAddress.isDefault) return nextAddresses
-
-      return nextAddresses.map((item) => ({
-        ...item,
-        isDefault: item.id === nextAddress.id,
-      }))
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchAddresses()
     })
-    setEditingAddress(null)
+  }, [fetchAddresses])
+
+  async function saveAddress(address) {
+    try {
+      if (address.id) {
+        await api.addresses.update(address.id, mapAddressToBackend(address))
+      } else {
+        await api.addresses.create(mapAddressToBackend(address))
+      }
+      setEditingAddress(null)
+      await fetchAddresses()
+    } catch (err) {
+      console.error('Failed to save address:', err)
+    }
   }
 
-  function deleteAddress(addressId) {
-    setAddresses((current) => current.filter((address) => address.id !== addressId))
+  async function deleteAddress(addressId) {
+    try {
+      await api.addresses.delete(addressId)
+      await fetchAddresses()
+    } catch (err) {
+      console.error('Failed to delete address:', err)
+    }
   }
 
-  function setDefaultAddress(addressId) {
-    setAddresses((current) =>
-      current.map((address) => ({
-        ...address,
-        isDefault: address.id === addressId,
-      })),
-    )
+  async function setDefaultAddress(addressId) {
+    try {
+      await api.addresses.setDefault(addressId)
+      await fetchAddresses()
+    } catch (err) {
+      console.error('Failed to set default address:', err)
+    }
   }
 
   return (
@@ -195,17 +242,23 @@ function Addresses() {
       </section>
 
       <main className="feature-section address-layout">
-        <div className="address-grid">
-          {addresses.map((address) => (
-            <AddressCard
-              address={address}
-              key={address.id}
-              onDelete={deleteAddress}
-              onEdit={setEditingAddress}
-              onSetDefault={setDefaultAddress}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16 w-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f8f5f]"></div>
+          </div>
+        ) : (
+          <div className="address-grid">
+            {addresses.map((address) => (
+              <AddressCard
+                address={address}
+                key={address.id}
+                onDelete={deleteAddress}
+                onEdit={setEditingAddress}
+                onSetDefault={setDefaultAddress}
+              />
+            ))}
+          </div>
+        )}
         <AddressForm
           editingAddress={editingAddress}
           key={editingAddress?.id ?? 'new-address'}

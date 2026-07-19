@@ -1,43 +1,67 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'
-import { wishlistProducts as initialWishlist } from '../data/wishlist'
+import api from '../services/api'
+import { useAuth } from './AuthContext'
 
 const WishlistContext = createContext(null)
 
 export function WishlistProvider({ children }) {
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('quickcart_wishlist')
-      return saved ? JSON.parse(saved) : initialWishlist
-    } catch (err) {
-      console.error('Failed to parse wishlist from local storage:', err)
-      return initialWishlist
+  const { user } = useAuth()
+  const [wishlist, setWishlist] = useState([])
+
+  const fetchWishlist = useCallback(async () => {
+    const token = localStorage.getItem('quickcart_token')
+    if (!token) {
+      setWishlist([])
+      return
     }
-  })
+    try {
+      const res = await api.wishlist.get()
+      if (res.data && res.data.data) {
+        const products = (res.data.data.products || []).map((product) => {
+          if (product) {
+            product.id = product._id
+          }
+          return product
+        }).filter(Boolean)
+        setWishlist(products)
+      }
+    } catch (err) {
+      console.error('Failed to fetch wishlist:', err)
+    }
+  }, [])
 
   useEffect(() => {
-    localStorage.setItem('quickcart_wishlist', JSON.stringify(wishlist))
-  }, [wishlist])
-
-  const addToWishlist = useCallback((product) => {
-    setWishlist((current) => {
-      if (current.some((item) => item.id === product.id)) {
-        return current; // already exists
-      }
-      return [...current, product];
+    Promise.resolve().then(() => {
+      fetchWishlist()
     })
-  }, [])
+  }, [user, fetchWishlist])
 
-  const removeFromWishlist = useCallback((productId) => {
-    setWishlist((current) => current.filter((item) => item.id !== productId))
-  }, [])
+  const addToWishlist = useCallback(async (product) => {
+    try {
+      const productId = product._id || product.id
+      await api.wishlist.add(productId)
+      await fetchWishlist()
+    } catch (err) {
+      console.error('Failed to add to wishlist:', err)
+    }
+  }, [fetchWishlist])
+
+  const removeFromWishlist = useCallback(async (productId) => {
+    try {
+      await api.wishlist.remove(productId)
+      await fetchWishlist()
+    } catch (err) {
+      console.error('Failed to remove from wishlist:', err)
+    }
+  }, [fetchWishlist])
 
   const isInWishlist = useCallback((productId) => {
-    return wishlist.some((item) => item.id === productId)
+    return wishlist.some((item) => (item._id === productId || item.id === productId))
   }, [wishlist])
 
   const value = useMemo(
-    () => ({ wishlist, addToWishlist, removeFromWishlist, isInWishlist }),
-    [wishlist, addToWishlist, removeFromWishlist, isInWishlist]
+    () => ({ wishlist, addToWishlist, removeFromWishlist, isInWishlist, refreshWishlist: fetchWishlist }),
+    [wishlist, addToWishlist, removeFromWishlist, isInWishlist, fetchWishlist]
   )
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>

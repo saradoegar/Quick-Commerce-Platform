@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FiSearch, FiArrowRight, FiGrid } from 'react-icons/fi'
-import { categories } from '../data/categories'
+import api from '../services/api'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import './Home.css'
@@ -9,16 +9,46 @@ import './Products.css'
 
 export default function Categories() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [categoriesList, setCategoriesList] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    const fetchCategories = async () => {
+      try {
+        const res = await api.categories.getAll()
+        if (res.data && res.data.data && active) {
+          const formatted = res.data.data.map((cat) => {
+            const slug = cat.slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+            return {
+              ...cat,
+              id: cat._id,
+              slug,
+              featured: ['fruits-vegetables', 'dairy-eggs', 'snacks', 'cleaning-supplies'].includes(slug),
+              productCount: cat.productCount || 0
+            }
+          })
+          setCategoriesList(formatted)
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err)
+      } finally {
+        if (active) setIsLoading(false)
+      }
+    }
+    fetchCategories()
+    return () => { active = false }
+  }, [])
 
   const filteredCategories = useMemo(() => {
     const query = searchQuery.toLowerCase().trim()
-    if (!query) return categories
-    return categories.filter(
+    if (!query) return categoriesList
+    return categoriesList.filter(
       (cat) =>
         cat.name.toLowerCase().includes(query) ||
         cat.description.toLowerCase().includes(query)
     )
-  }, [searchQuery])
+  }, [searchQuery, categoriesList])
 
   const featuredCategories = useMemo(() => {
     return filteredCategories.filter((cat) => cat.featured)
@@ -78,7 +108,11 @@ export default function Categories() {
         </section>
 
         <div className="commerce-container px-4 md:px-8 max-w-7xl mx-auto mt-8">
-          {filteredCategories.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500"></div>
+            </div>
+          ) : filteredCategories.length === 0 ? (
             /* Empty State */
             <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-dashed border-gray-200 shadow-sm p-8">
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">

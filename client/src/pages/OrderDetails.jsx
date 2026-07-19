@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   FiArrowLeft,
@@ -13,8 +13,7 @@ import {
 import toast from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { orders as initialOrders } from '../data/orders'
-import { getProductById } from '../data/products'
+import api from '../services/api'
 import './Home.css'
 
 // Reusable Status Badge
@@ -165,45 +164,90 @@ function OrderTimeline({ status }) {
   )
 }
 
-
-// Main Order Details Component
 function OrderDetails() {
   const { orderId } = useParams()
   const navigate = useNavigate()
 
-  // Load orders from local storage or fallback
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem('quickcart_orders')
-    return saved ? JSON.parse(saved) : initialOrders
-  })
+  const [order, setOrder] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Find the requested order
-  const order = orders.find((o) => o.id === orderId)
-
-  // Save updates to state and localStorage
-  const saveOrders = (updatedOrders) => {
-    setOrders(updatedOrders)
-    localStorage.setItem('quickcart_orders', JSON.stringify(updatedOrders))
-  }
-
-  // Interactive Actions
-  const handleCancelOrder = () => {
-    if (window.confirm(`Are you sure you want to cancel order ${orderId}?`)) {
-      const updated = orders.map((o) => {
-        if (o.id === orderId) {
+  const fetchOrderDetails = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await api.orders.getById(orderId)
+      if (res.data && res.data.data) {
+        const orderData = res.data.data
+        const products = (orderData.items || []).map((item) => {
+          const p = item.product || {}
           return {
-            ...o,
-            status: 'Cancelled',
-            trackingStatus: 'Cancelled',
-            estimatedDelivery: 'Order Cancelled'
+            productId: p._id,
+            quantity: item.quantity,
+            name: p.name || 'Product',
+            price: item.priceAtPurchase || p.price || 0,
+            image: p.thumbnail || p.images?.[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=360&q=80',
+            meta: p.meta || 'Pack',
+            brand: p.brand || ''
           }
-        }
-        return o
-      })
-      saveOrders(updated)
-      toast.success(`Order ${orderId} has been cancelled.`, {
-        icon: '⚠️'
-      })
+        })
+
+        let status = 'Processing'
+        if (orderData.orderStatus === 'Pending') status = 'Placed'
+        else if (orderData.orderStatus === 'Confirmed') status = 'Confirmed'
+        else if (orderData.orderStatus === 'Packed') status = 'Packed'
+        else if (orderData.orderStatus === 'Shipped') status = 'Shipped'
+        else if (orderData.orderStatus === 'OutForDelivery') status = 'Out For Delivery'
+        else if (orderData.orderStatus === 'Delivered') status = 'Delivered'
+        else if (orderData.orderStatus === 'Cancelled') status = 'Cancelled'
+
+        setOrder({
+          id: orderData._id,
+          date: orderData.createdAt,
+          estimatedDelivery: orderData.estimatedDeliveryTime || 'Delivery details pending',
+          status,
+          products,
+          paymentMethod: orderData.paymentMethod || 'COD',
+          paymentStatus: orderData.paymentStatus || 'Pending',
+          subtotal: orderData.pricing?.subtotal || (orderData.totalAmount - (orderData.pricing?.tax || 0)),
+          discount: orderData.pricing?.discount || 0,
+          shipping: orderData.pricing?.deliveryCharge || 0,
+          tax: orderData.pricing?.tax || 0,
+          total: orderData.totalAmount || 0,
+          address: {
+            name: orderData.shippingAddress?.fullName || 'Customer',
+            phone: orderData.shippingAddress?.phone || '',
+            line1: orderData.shippingAddress?.addressLine1 || '',
+            line2: orderData.shippingAddress?.addressLine2 || '',
+            city: orderData.shippingAddress?.city || '',
+            state: orderData.shippingAddress?.state || '',
+            pincode: orderData.shippingAddress?.postalCode || ''
+          },
+          notes: orderData.notes || ''
+        })
+      }
+    } catch (err) {
+      console.error('Failed to load order details:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [orderId])
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchOrderDetails()
+    })
+  }, [fetchOrderDetails])
+
+  const handleCancelOrder = async () => {
+    if (window.confirm(`Are you sure you want to cancel order ${orderId}?`)) {
+      try {
+        await api.orders.cancel(orderId, 'User requested cancellation')
+        toast.success(`Order ${orderId} has been cancelled.`, {
+          icon: '⚠️'
+        })
+        await fetchOrderDetails()
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to cancel order')
+      }
     }
   }
 
@@ -213,6 +257,18 @@ function OrderDetails() {
 
   const handleDownloadInvoice = () => {
     toast.success('Generating and downloading invoice PDF...')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="home-page">
+        <Navbar />
+        <main className="products-page min-h-screen flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-[#4f8f5f]"></div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   if (!order) {
@@ -239,16 +295,13 @@ function OrderDetails() {
     )
   }
 
-  // Helper date formatter
   const formatDate = (isoString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
     return new Date(isoString).toLocaleDateString(undefined, options)
   }
 
-  // Mock transaction reference
-  const mockTxnId = `txn_${order.id.toLowerCase().replace('-', '_')}_ref`
+  const mockTxnId = `txn_${order.id.toLowerCase().replace(/-/g, '_')}_ref`
 
-  // Get delivery partner details
   const getDeliveryPartner = (status) => {
     if (status === 'Delivered') {
       return { name: 'Ramesh Kumar', phone: '+91 98765 43210', status: 'Delivered your order' }
@@ -278,7 +331,7 @@ function OrderDetails() {
 
           {/* Action Header controls */}
           <div className="flex gap-2.5">
-            {(order.status === 'Processing' || order.status === 'Packed') && (
+            {(order.status === 'Placed' || order.status === 'Confirmed' || order.status === 'Processing') && (
               <button
                 onClick={handleCancelOrder}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200/50 text-red-600 text-xs font-extrabold transition-all"
@@ -328,32 +381,28 @@ function OrderDetails() {
             <article className="bg-white border border-[#2f3640]/10 rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-extrabold text-[#2f3640] uppercase tracking-wider mb-4">Ordered Products</h3>
               <div className="divide-y divide-[#2f3640]/5">
-                {order.products.map((item) => {
-                  const product = getProductById(item.productId)
-                  if (!product) return null
-                  return (
-                    <div key={item.productId} className="flex gap-4 py-4 first:pt-0 last:pb-0 items-center">
-                      <Link to={`/products/${product.id}`} className="shrink-0">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-16 h-16 object-cover rounded-xl border border-[#2f3640]/5 bg-[#f9f6f1] hover:scale-102 transition-transform"
-                          loading="lazy"
-                        />
+                {order.products.map((item) => (
+                  <div key={item.productId} className="flex gap-4 py-4 first:pt-0 last:pb-0 items-center">
+                    <Link to={`/products/${item.productId}`} className="shrink-0">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-xl border border-[#2f3640]/5 bg-[#f9f6f1] hover:scale-102 transition-transform"
+                        loading="lazy"
+                      />
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link to={`/products/${item.productId}`} className="text-sm font-extrabold text-[#2f3640] hover:text-[#4f8f5f] transition-colors leading-snug block">
+                        {item.name}
                       </Link>
-                      <div className="flex-1 min-w-0">
-                        <Link to={`/products/${product.id}`} className="text-sm font-extrabold text-[#2f3640] hover:text-[#4f8f5f] transition-colors leading-snug block">
-                          {product.name}
-                        </Link>
-                        <p className="text-xs text-[#6b7280] mt-1">{product.brand} · {product.meta}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-extrabold text-[#2f3640]">Rs {product.price * item.quantity}</p>
-                        <p className="text-xs text-[#6b7280] mt-0.5">Qty: {item.quantity} · Rs {product.price}/unit</p>
-                      </div>
+                      <p className="text-xs text-[#6b7280] mt-1">{item.brand} · {item.meta}</p>
                     </div>
-                  )
-                })}
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-extrabold text-[#2f3640]">Rs {item.price * item.quantity}</p>
+                      <p className="text-xs text-[#6b7280] mt-0.5">Qty: {item.quantity} · Rs {item.price}/unit</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </article>
 
