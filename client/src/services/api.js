@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const apiInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://quick-commerce-api-spr9.onrender.com',
 })
 
 apiInstance.interceptors.request.use((config) => {
