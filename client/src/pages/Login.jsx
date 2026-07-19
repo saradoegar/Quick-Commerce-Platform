@@ -9,7 +9,6 @@ import {
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
-// eslint-disable-next-line no-unused-vars
 import api from '../services/api' // base Axios client for future backend integrations
 
 function Login() {
@@ -64,22 +63,11 @@ function Login() {
     setIsSubmitting(true)
     
     try {
-      // MOCK BACKEND INTEGRATION
-      // Simulating network roundtrip delay (1.5 seconds)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // When API endpoint is ready, uncomment the following block:
-      /*
-      const response = await api.post('/api/auth/login', {
-        email,
-        password,
-      })
-      const token = response.data.token
-      localStorage.setItem('quickcart_token', token)
-      */
-
-      // Simulated local session storage setup
-      login(email)
+      const response = await api.auth.login(email, password)
+      const { user: userData, token } = response.data
+      
+      // Store in AuthContext session state
+      login(userData, token)
       
       toast.success('Successfully logged in!')
       

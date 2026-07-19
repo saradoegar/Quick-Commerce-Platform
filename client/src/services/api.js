@@ -6,22 +6,26 @@ const apiInstance = axios.create({
 })
 
 apiInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('quickcart_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Structured Mock API Service layer representing future backend endpoints
+// Structured API Service layer representing backend endpoints
 const api = {
   // Authentication Namespace
   auth: {
-    login: async (email) => {
-      // Future API call: return apiInstance.post('/api/auth/login', { email, password })
-      return Promise.resolve({ data: { token: 'mock_session_token_xyz', user: { email, name: 'Sara Johnson' } } })
+    login: async (email, password) => {
+      return apiInstance.post('/api/auth/login', { email, password })
     },
-    register: async () => {
-      // Future API call: return apiInstance.post('/api/auth/register', userData)
-      return Promise.resolve({ data: { success: true, message: 'User registered successfully!' } })
+    register: async (userData) => {
+      return apiInstance.post('/api/auth/register', userData)
+    },
+    getMe: async () => {
+      return apiInstance.get('/api/auth/me')
+    },
+    logout: async () => {
+      return apiInstance.post('/api/auth/logout')
     }
   },
 

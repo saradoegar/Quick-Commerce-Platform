@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -7,35 +8,45 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for saved session on mount
-    const checkSession = () => {
+    // Verify session token on mount
+    const checkSession = async () => {
+      const token = localStorage.getItem('quickcart_token')
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+
       try {
-        const saved = localStorage.getItem('quickcart_session')
-        if (saved) {
-          setUser(JSON.parse(saved))
+        const response = await api.auth.getMe()
+        if (response.data && response.data.user) {
+          setUser(response.data.user)
         }
       } catch (err) {
-        console.error('Failed to parse saved auth session:', err)
+        console.error('Session verification failed:', err)
+        localStorage.removeItem('quickcart_token')
       } finally {
         setIsLoading(false)
       }
     }
     
-    // Simulate minor delay to look premium/authentic
-    const timer = setTimeout(checkSession, 300)
-    return () => clearTimeout(timer)
+    checkSession()
   }, [])
 
-  const login = (email, name = 'Sara Johnson') => {
-    const sessionData = { email, name, isLoggedIn: true }
-    setUser(sessionData)
-    localStorage.setItem('quickcart_session', JSON.stringify(sessionData))
+  const login = (userData, token) => {
+    setUser(userData)
+    localStorage.setItem('quickcart_token', token)
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('quickcart_session')
-    localStorage.removeItem('quickcart_orders') // Clear mock session orders if needed
+  const logout = async () => {
+    try {
+      await api.auth.logout()
+    } catch (err) {
+      console.error('API logout failed:', err)
+    } finally {
+      setUser(null)
+      localStorage.removeItem('quickcart_token')
+      localStorage.removeItem('quickcart_orders')
+    }
   }
 
   const value = useMemo(
