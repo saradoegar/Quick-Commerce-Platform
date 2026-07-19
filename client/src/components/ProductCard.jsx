@@ -4,12 +4,31 @@ import { toast } from 'react-hot-toast'
 import useCart from '../hooks/useCart'
 import { useWishlist } from '../context/WishlistContext'
 
+const getDisplayText = (value) => {
+  if (typeof value === 'string' || typeof value === 'number') return value
+  if (!value || typeof value !== 'object') return ''
+  return value.name || value.title || value.label || ''
+}
+
+const getImageSrc = (value) => {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  return value.url || value.src || value.secure_url || ''
+}
+
 function ProductCard({ product }) {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
-  const productId = product.id || product.productId
+  const productId = product.id || product._id || product.productId
   const productLink = productId ? `/products/${productId}` : null
   const isWishlisted = isInWishlist(productId)
+  const productImage =
+    getImageSrc(product.image) || getImageSrc(product.images?.[0]) || getImageSrc(product.thumbnail)
+  const categoryLabel = getDisplayText(product.category)
+  const brandLabel = getDisplayText(product.brand)
+  const metaLabel = getDisplayText(product.meta) || getDisplayText(product.weight) || getDisplayText(product.unit)
+  const discountBadgeLabel = getDisplayText(product.discountBadge)
+  const discountLabel = getDisplayText(product.discount)
 
   const handleWishlistClick = (e) => {
     e.preventDefault()
@@ -35,9 +54,9 @@ function ProductCard({ product }) {
   const renderCardContent = () => (
     <>
       <div className="product-image-wrap">
-        <img src={product.image || product.images?.[0]} alt={product.name} loading="lazy" />
+        <img src={productImage} alt={product.name} loading="lazy" />
         {product.express ? <span className="express-pill">Express</span> : null}
-        {product.discountBadge ? <span className="discount-badge-pill">{product.discountBadge}</span> : null}
+        {discountBadgeLabel ? <span className="discount-badge-pill">{discountBadgeLabel}</span> : null}
         
         <button 
           className={`wishlist-btn ${isWishlisted ? 'active' : ''}`}
@@ -51,10 +70,10 @@ function ProductCard({ product }) {
 
       <div className="product-info">
         <div>
-          {product.category ? <span className="product-category">{product.category}</span> : null}
+          {categoryLabel ? <span className="product-category">{categoryLabel}</span> : null}
           <h3>{product.name}</h3>
-          {product.brand ? <p className="product-brand">{product.brand}</p> : null}
-          <p>{product.meta}</p>
+          {brandLabel ? <p className="product-brand">{brandLabel}</p> : null}
+          <p>{metaLabel}</p>
         </div>
 
         {product.rating ? (
@@ -74,7 +93,7 @@ function ProductCard({ product }) {
                 </span>
               ) : null}
             </div>
-            {product.discount ? <span className="discount-tag">{product.discount}</span> : null}
+            {discountLabel ? <span className="discount-tag">{discountLabel}</span> : null}
           </div>
           <button type="button" onClick={handleAddToCart}>Add</button>
         </div>
@@ -102,4 +121,3 @@ function ProductCard({ product }) {
 }
 
 export default ProductCard
-

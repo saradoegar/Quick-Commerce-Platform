@@ -29,12 +29,18 @@ export function CartProvider({ children }) {
       if (res.data && res.data.data) {
         const cart = res.data.data
         const formattedItems = (cart.items || []).map((item) => {
-          if (item.product) {
-            item.product.id = item.product._id
-          }
+          const product = item.product
+            ? {
+                ...item.product,
+                id: item.product._id,
+                images: item.product.images?.length ? item.product.images : [item.product.thumbnail].filter(Boolean),
+              }
+            : item.product
+
           return {
             ...item,
-            productId: item.product?._id,
+            product,
+            productId: product?._id,
           }
         })
         setItems(formattedItems)

@@ -8,6 +8,18 @@ import useCart from '../hooks/useCart'
 import formatPrice from '../utils/formatPrice'
 import './commerce.css'
 
+const getDisplayText = (value) => {
+  if (typeof value === 'string' || typeof value === 'number') return value
+  if (!value || typeof value !== 'object') return ''
+  return value.name || value.title || value.label || ''
+}
+
+const getImageSrc = (value) => {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return ''
+  return value.url || value.src || value.secure_url || ''
+}
+
 function ProductDetails() {
   const { productId } = useParams()
   const { addToCart } = useCart()
@@ -28,19 +40,19 @@ function ProductDetails() {
           p.rating = p.rating || 4.5
           p.reviewCount = p.reviewCount || 10
           p.stock = p.stock > 0 ? 'In stock' : 'Out of stock'
-          p.images = p.images || [p.thumbnail]
+          p.images = (p.images?.length ? p.images : [p.thumbnail]).map(getImageSrc).filter(Boolean)
           p.specifications = p.specifications || []
           setProduct(p)
           setSelection({ productId: p.id, quantity: 1, image: p.images[0] })
 
           // Fetch related products of the same category
-          const categoryName = p.category?.name || p.category
+          const categoryName = getDisplayText(p.category)
           if (categoryName) {
             const relRes = await api.products.getAll({ category: categoryName, limit: 4 })
              if (relRes.data && relRes.data.data && active) {
               const rawRelated = relRes.data.data.products || (Array.isArray(relRes.data.data) ? relRes.data.data : [])
               const filtered = rawRelated
-                .map((item) => ({ ...item, id: item._id, images: item.images || [item.thumbnail] }))
+                .map((item) => ({ ...item, id: item._id, images: (item.images?.length ? item.images : [item.thumbnail]).map(getImageSrc).filter(Boolean) }))
                 .filter((item) => item.id !== p.id)
                 .slice(0, 3)
               setRelatedProducts(filtered)
@@ -59,6 +71,10 @@ function ProductDetails() {
 
   const quantity = selection.productId === product?.id ? selection.quantity : 1
   const selectedImage = selection.productId === product?.id ? selection.image : product?.images?.[0]
+  const categoryLabel = getDisplayText(product?.category)
+  const brandLabel = getDisplayText(product?.brand)
+  const metaLabel = getDisplayText(product?.meta) || getDisplayText(product?.weight) || getDisplayText(product?.unit) || 'Pack'
+  const discountLabel = getDisplayText(product?.discount)
 
   const addProduct = () => {
     if (!product) return
@@ -93,7 +109,7 @@ function ProductDetails() {
     <div className="commerce-page">
       <CommerceHeader />
       <main className="commerce-container">
-        <p className="commerce-crumb">Home / {product.category?.name || product.category} / <strong>{product.name}</strong></p>
+        <p className="commerce-crumb">Home / {categoryLabel} / <strong>{product.name}</strong></p>
         <section className="detail-layout">
           <div className="product-gallery">
             <div className="product-main-image"><img src={selectedImage} alt={product.name} /><span><FiZoomIn /> Zoom image</span></div>
@@ -102,10 +118,10 @@ function ProductDetails() {
             </div>
           </div>
           <div className="product-detail-copy">
-            <p className="commerce-eyebrow">{product.brand} · {product.category?.name || product.category}</p>
-            <h1>{product.name}</h1><p className="product-meta">{product.meta || 'Pack'}</p>
+            <p className="commerce-eyebrow">{brandLabel} / {categoryLabel}</p>
+            <h1>{product.name}</h1><p className="product-meta">{metaLabel}</p>
             <p className="rating-line"><span><FiStar /> {product.rating}</span> {product.reviewCount} reviews</p>
-            <div className="detail-price"><strong>{formatPrice(product.price)}</strong>{product.oldPrice && <s>{formatPrice(product.oldPrice)}</s>}<b>{product.discount}</b></div>
+            <div className="detail-price"><strong>{formatPrice(product.price)}</strong>{product.oldPrice && <s>{formatPrice(product.oldPrice)}</s>}{discountLabel ? <b>{discountLabel}</b> : null}</div>
             <p className="in-stock"><FiCheck /> {product.stock}</p>
             <div className="purchase-row"><div className="quantity-control"><button type="button" onClick={() => setSelection({ productId: product.id, quantity: Math.max(1, quantity - 1), image: selectedImage })} aria-label="Reduce quantity"><FiMinus /></button><span>{quantity}</span><button type="button" onClick={() => setSelection({ productId: product.id, quantity: quantity + 1, image: selectedImage })} aria-label="Increase quantity"><FiPlus /></button></div><button className="commerce-primary" type="button" onClick={addProduct}><FiShoppingBag /> Add to cart</button><Link className="commerce-secondary" to="/checkout" onClick={addProduct}>Buy now</Link></div>
             <div className="delivery-hint"><FiTruck /><span><strong>Express delivery available</strong> Get this everyday essential from a nearby store.</span></div>
