@@ -82,10 +82,6 @@ function Login() {
     }
   }
 
-  // Mock Actions for Oauth & Guest Flows
-  const handleGoogleLogin = () => {
-    toast.success('Google sign-in initialized... (UI placeholder)')
-  }
 
   const handleForgotPassword = (e) => {
     e.preventDefault()
@@ -293,35 +289,6 @@ function Login() {
 
             {/* Alternates authentication methods */}
             <div className="grid grid-cols-1 gap-2.5">
-              {/* Google OAuth UI Placeholder */}
-              <button
-                onClick={handleGoogleLogin}
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 min-h-11 px-4 py-2 bg-white border border-[#2f3640]/10 hover:bg-[#f9f6f1] text-[#2f3640] font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer disabled:cursor-not-allowed"
-                type="button"
-              >
-                {/* Simulated Google Logo SVG */}
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.77-.07-1.54-.19-2.27H12v4.51h6.6c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.68-5.17 3.68-8.82z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.11 0-5.74-2.11-6.68-4.96H1.21v3.15C3.18 21.88 7.31 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.32 14.29c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.54H1.21C.44 8.08 0 9.79 0 11.6c0 1.81.44 3.52 1.21 5.06l4.11-3.37z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.18 2.12 1.21 5.66l4.11 3.17c.94-2.85 3.57-4.96 6.68-4.96z"
-                  />
-                </svg>
-                Continue with Google
-              </button>
-
               {/* Guest Access Link */}
               <Link
                 to="/products"

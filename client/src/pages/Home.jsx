@@ -179,13 +179,13 @@ function Home() {
               everyday staples from a wide local catalog built for quick delivery.
             </p>
             <div className="hero-actions">
-              <a className="primary-action" href="/products">
+              <Link className="primary-action" to="/products">
                 Start shopping
                 <FiArrowRight />
-              </a>
-              <a className="secondary-action" href="/categories">
+              </Link>
+              <Link className="secondary-action" to="/categories">
                 Browse categories
-              </a>
+              </Link>
             </div>
           </div>
 
